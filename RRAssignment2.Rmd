@@ -23,7 +23,7 @@ sd <- read.csv("./repdata%2Fdata%2FStormData.csv.bz2",T,",")
 After reading we check the first rows in this dataset.
 ```{r}
 dim(sd)
-head(sd[,1:9],3)
+head(sd[,1:7],3)
 ```
 So loading was successful.  
 
@@ -40,17 +40,37 @@ We then attach the column headers to the dataset.
 ```{r}
 names(ev_pop) <- c("EVTYPE","FATALITIES","INJURIES")
 ```
-Let's sort the dataframe by fatalities.
+In order to analyze only sensible part of our dataframe let's focus on events that represent 80% of fatalities.
+Let's sort the dataframe by fatalities and injuries.
 ```{r}
-ev_pop <- ev_pop[order(-ev_pop$FATALITIES),]
+ev_pop <- ev_pop[order(-ev_pop$FATALITIES,-ev_pop$INJURIES),]
 ```
-In order to analyze only sensible part of our dataframe let's add cumulative percentage based on fatalities.
-We take for analysis only events which are represent 80% of fatalities.
+We add cumulative percentage based on fatalities and select events which are represent 80% of fatalities.
 ```{r}
 ev_pop$prcnt <- ev_pop$FATALITIES/sum(ev_pop$FATALITIES)*100
 ev_pop$incr_prcnt <- cumsum(ev_pop$FATALITIES)/sum(ev_pop$FATALITIES)*100
-ev_pop <- ev_pop[ev_pop$incr_prcnt<=80,]
+ev_pop_sel <- ev_pop[ev_pop$incr_prcnt<=80,]
+ev_pop_sel <- ev_pop_sel[order(-ev_pop_sel$incr_prcnt),]
+mde <- as.integer(max(ev_pop_sel$prcnt))
 ```
+Let's make plots based on this dataframe.
+We will use ggplot2 library for the plots making.
+```{r}
+library(ggplot2)
+par(mai=c(1,2,1,1))
+barplot(ev_pop_sel$prcnt,names.arg=ev_pop_sel$EVTYPE,horiz=T,las=1
+        ,main="Weather events by share of fatalities",xlab="Share in %")
+```
+  
+As you can see above Tornado is the most dangerous weather event.  
+```{r}
+ev_pop_sel <- ev_pop_sel[order(ev_pop_sel$INJURIES),]
+par(mai=c(1,2,1,1))
+barplot(ev_pop_sel$INJURIES,names.arg=ev_pop_sel$EVTYPE,horiz=T,las=1
+        ,main="Weather events by number of injuries",xlab="number of injuries")
+```
+  
+Also Tornado is the most harmful from the injuries perspective.  
 
 #### **Q2: Across the United States, which types of events have the greatest economic consequences?**    
 For this analysis we should take column with event type and columns with property damage.
@@ -81,27 +101,28 @@ We take for analysis only events which are represent 80% of damages.
 ```{r}
 ev_propdmg$prcnt <- ev_propdmg$damage/sum(ev_propdmg$damage)*100
 ev_propdmg$incr_prcnt <- cumsum(ev_propdmg$damage)/sum(ev_propdmg$damage)*100
-ev_propdmg <- ev_propdmg[ev_propdmg$incr_prcnt<=80,]
+ev_propdmg_sel <- ev_propdmg[ev_propdmg$incr_prcnt<=80,]
+ev_propdmg_sel <- ev_propdmg_sel[order(-ev_propdmg_sel$incr_prcnt),]
+mpde <- as.integer(max(ev_propdmg_sel$prcnt))
 ```
+  
+Let's make plots based on this dataframe.
+```{r}
+par(mai=c(1,3,1,1))
+barplot(ev_propdmg_sel$prcnt,names.arg=ev_propdmg_sel$EVTYPE,horiz=T,las=1
+        ,main="Weather events by share of property damage",xlab="Share in %")
+```
+  
     
 
 ## **Results**
-#### **Q1: Across the United States, which types of events are most harmful with respect to population health?**  
-In order to answer on this question let's make plots based on the dataframe which we created before.
-We will use ggplot2 library for the plots making.
-```{r}
-library(ggplot2)
-qplot(ev_pop$EVTYPE,ev_pop$prcnt,main = "Event type by Fatalities Share",xlab="Event",ylab="Fatalities")
-barplot(ev_pop$prcnt,main = "Event type by Fatalities Share",names.arg = ev_pop$EVTYPE,xlab="Event",ylab="Fatalities")
-```
+Tornado is the most dangerous weather event across the U.S.:  
+**`r mde`%** of all fatalities are caused by Tornado.  
+Also Tornado is the most harmful from the injuries perspective.  
+  
+Flood is the most property damaging weather event across the U.S.:  
+**`r mpde`%** of all property damage are caused by Flood. 
 
-
-#### **Q2: Across the United States, which types of events have the greatest economic consequences?**           
-In order to answer on this question let's make plots based on the dataframe which we created before.
-```{r}
-qplot(ev_propdmg$EVTYPE,ev_propdmg$prcnt,main = "Event type by damage amount",xlab="Event",ylab="Damage")
-barplot(ev_propdmg$prcnt,main = "Event type by damage share",names.arg = ev_pop$EVTYPE,xlab="Event",ylab="Damage")
-```
 
 
 
