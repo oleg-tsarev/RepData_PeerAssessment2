@@ -1,0 +1,108 @@
+---
+title: "**Tornado is the most harmful weather event across the U.S.**"
+author: "Oleg Tsarev"
+date: "15/06/2015"
+output: html_document
+---
+
+## **Synopsis**
+In this report we aim to explore the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database and answer the following questions about severe weather events:  
+1. Across the United States, which types of events are most harmful with respect to population health?  
+2. Across the United States, which types of events have the greatest economic consequences?  
+  
+The U.S. National Oceanic and Atmospheric Administration's [storm database](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. For more details on database see [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf) and [National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)  
+  
+  
+## **Loading the Raw data**
+The events in the NOAA storm database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered ore complete.  
+
+```{r load,cache=T}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2","./repdata%2Fdata%2FStormData.csv.bz2",method = "wget")  
+sd <- read.csv("./repdata%2Fdata%2FStormData.csv.bz2",T,",")  
+```
+After reading we check the first rows in this dataset.
+```{r}
+dim(sd)
+head(sd[,1:9],3)
+```
+So loading was successful.  
+
+## **Data Processing**
+Let's make some data processing in order to answer on our questions.
+
+#### **Q1: Across the United States, which types of events are most harmful with respect to population health?**  
+We first create new dataframe specially dedicated for this analysis.
+There will be only event type, fatalities and injuries quantity. 
+```{r ev_pop,cache=T}
+ev_pop <- na.omit(aggregate(list(sd$FATALITIES,sd$INJURIES),by=list(sd$EVTYPE),FUN=sum,na.rm=T))
+```
+We then attach the column headers to the dataset.
+```{r}
+names(ev_pop) <- c("EVTYPE","FATALITIES","INJURIES")
+```
+Let's sort the dataframe by fatalities.
+```{r}
+ev_pop <- ev_pop[order(-ev_pop$FATALITIES),]
+```
+In order to analyze only sensible part of our dataframe let's add cumulative percentage based on fatalities.
+We take for analysis only events which are represent 80% of fatalities.
+```{r}
+ev_pop$prcnt <- ev_pop$FATALITIES/sum(ev_pop$FATALITIES)*100
+ev_pop$incr_prcnt <- cumsum(ev_pop$FATALITIES)/sum(ev_pop$FATALITIES)*100
+ev_pop <- ev_pop[ev_pop$incr_prcnt<=80,]
+```
+
+#### **Q2: Across the United States, which types of events have the greatest economic consequences?**    
+For this analysis we should take column with event type and columns with property damage.
+Let's check columns in the dataset.
+```{r}
+names(sd)
+```
+Property damage is shown as a PROPDMG. Scale of this PROPDMG is in the PROPDMGEXP.
+Therefore in order to get the damage in usual numeric form let's add new column.
+```{r}
+sd$damage <- sd$PROPDMG * ifelse(sd$PROPDMGEXP=="K",1000,ifelse(sd$PROPDMGEXP=="M",1000000,ifelse(sd$PROPDMGEXP=="B",1000000000,1)))
+```
+Then we create new dataframe specially dedicated for this analysis.
+There will be only event type and property damage. 
+```{r ev_propdmg,cache=T}
+ev_propdmg <- na.omit(aggregate(list(sd$damage),by=list(sd$EVTYPE),FUN=sum,na.rm=T))
+```
+We then attach the column headers to the dataset.
+```{r}
+names(ev_propdmg) <- c("EVTYPE","damage")
+```
+Let's sort the dataframe by damage level.
+```{r}
+ev_propdmg <- ev_propdmg[order(-ev_propdmg$damage),]
+```
+In order to analyze only sensible part of our dataframe let's add cumulative percentage based on damages amount.
+We take for analysis only events which are represent 80% of damages.
+```{r}
+ev_propdmg$prcnt <- ev_propdmg$damage/sum(ev_propdmg$damage)*100
+ev_propdmg$incr_prcnt <- cumsum(ev_propdmg$damage)/sum(ev_propdmg$damage)*100
+ev_propdmg <- ev_propdmg[ev_propdmg$incr_prcnt<=80,]
+```
+    
+
+## **Results**
+#### **Q1: Across the United States, which types of events are most harmful with respect to population health?**  
+In order to answer on this question let's make plots based on the dataframe which we created before.
+We will use ggplot2 library for the plots making.
+```{r}
+library(ggplot2)
+qplot(ev_pop$EVTYPE,ev_pop$prcnt,main = "Event type by Fatalities Share",xlab="Event",ylab="Fatalities")
+barplot(ev_pop$prcnt,main = "Event type by Fatalities Share",names.arg = ev_pop$EVTYPE,xlab="Event",ylab="Fatalities")
+```
+
+
+#### **Q2: Across the United States, which types of events have the greatest economic consequences?**           
+In order to answer on this question let's make plots based on the dataframe which we created before.
+```{r}
+qplot(ev_propdmg$EVTYPE,ev_propdmg$prcnt,main = "Event type by damage amount",xlab="Event",ylab="Damage")
+barplot(ev_propdmg$prcnt,main = "Event type by damage share",names.arg = ev_pop$EVTYPE,xlab="Event",ylab="Damage")
+```
+
+
+
+
